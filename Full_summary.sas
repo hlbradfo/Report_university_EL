@@ -78,6 +78,9 @@ run;
 %let elAll=coop fieldStudy paidIntern ptJob summerJob research unpaidIntern volunteer pdCo pdCoUr;
 %let elShort=paidIntern research unpaidIntern pdCo pdCoUr;
 
+%let course="everin34" "eversa34" "everfs34" "ever4994" "ever4974" "everAny34Course";
+%let courseAll=everin34 eversa34 everfs34 ever4994 ever4974 everAny34Course;
+
 /*
 %let subgroupAll=athlet cadet female instate int oneGen rural transf urm urmaus urmous uss vet;
 %let subgroupAllNames=athlete cadet female in-state international first-generation rural transfer 
@@ -109,24 +112,36 @@ run;
 
 
 
-/*-------------- Report set-up ----------------*/
-options nodate orientation=landscape;
-ods rtf file="&pathOut\participation.rtf" keepn startpage=no wordstyle="{\s1 Heading 1 \s2 Heading 2 \s3 Heading 3;}";
+/*-------------------- Macros -----------------*/
+/* 
+Purpose
+		Create table with unit x category pooled across years and for the most recent year
+Parameters
+		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		categoryText: possible character values for category variable, names encolsed in " "
+		categoryName: text name to display in table caption and across header
+Inputs
+		Summarized overall means with no interactions
+Outputs
+		2 report tables
+Use
+		%outcomes(unit=collegeCurrent,categoryText="paidIntern" "coop",categoryName='Experience')
+		Expereinces reported from start year to stop year
+		Unit	paidIntern	coop
+		AAD		75%			2%
+		CALS	32%			3%
+		
+		Experiences reported for stop year
+		Unit	paidIntern	coop
+		AAD		74%			1%
+		CALS	34%			2%
+*/
 
-ods escapechar='~';
-
-
-
-/*--------------- Destination -----------------*/
-ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
-
-	ods text="~S={font_size=16pt}{\pard\s2\b Destination \par}"; *H2;
-	
-ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to 20&currentYearFDS. graduates \par}";
 %macro outcomes(unit=,categoryText=,categoryName=,
 		des='Table with unit x category list pooled across years, table of same for most recent year');
-	%local unit categoryText categoryName;
+	%local categoryName categoryText unit;
 	
+	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYearFDS. to 20&currentYearFDS. graduates \par}";
 	*table unit x category pooled across years;
 	proc report data=dataSum.fdsMeans;
 		where &unit is not missing and
@@ -155,20 +170,28 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 	run;
 %mend outcomes;
 
-%outcomes(unit=collegeCurrent,
-		  categoryText=&destination,
-		  categoryName='Destination')
-
-
-
-/*---------- Destination x subgroup -----------*/
-	ods text="~S={font_size=16pt}{\pard\s2\b Demographic \par}"; *H2;
-
-		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
-
+/* 
+Purpose
+		
+Parameters
+		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		categoryText: possible character values for category variable, names encolsed in " "
+		categoryName: text name to display in table caption and across header
+		subgroup: 
+		subgroupName: 
+Inputs
+		
+Outputs
+		
+Use
+		%outcomesSubgroupWithGaps(unit=collegeCurrent,categoryText="paidIntern" "coop",categoryName='Experience',
+		subgroup=transf female,subgroupNames=transfer female)
+		
+	
+*/
 %macro outcomesSubgroupWithGaps(unit=,categoryText=,categoryName=,subgroup=,subgroupNames=,
 	des='Table of percents for category x (unit x subgroup) and table of gaps for category x unit');
-	%local n i unit nextSubgroup nextSubgroupName subgroup subgroupNames categoryText categoryName;
+	%local categoryName categoryText i n nextSubgroup nextSubgroupName subgroup subgroupNames unit;
 	%let n = %sysfunc(countw(&subgroup)); *n subgroups;
 	%do i = 1 %to &n; *subgroup;
 		%let nextSubgroup = %scan(&subgroup,&i); *select subgroup code;
@@ -222,17 +245,27 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		run;
 	%end; *subgroup;
 %mend outcomesSubgroupWithGaps;
+
+/* 
+Purpose
+		
+Parameters
+		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		categoryText: possible character values for category variable, names encolsed in " "
+		categoryName: text name to display in table caption and across header
+		subgroup:
+Inputs
+		
+Outputs
+		
+Use
+		%outcomesSubgroupNoGaps(unit=collegeCurrent,categoryText="paidIntern" "coop",categoryName='Experience',subgorup=transf female)
+		
 	
-%outcomesSubgroupWithGaps(unit=collegeCurrent,
-						  categoryText=&destination,
-						  categoryName='Destination',
-						  subgroup=&subgroupAll, 
-						  subgroupNames=&subgroupAllNames)
-			  
-			  
+*/
 %macro outcomesSubgroupNoGaps(unit=,categoryText=,categoryName=,subgroup=,
 	des='Tables of percents for category x unit for each subgroup');
-	%local n i unit nextSubgroup subgroup categoryText categoryName;
+	%local categoryName categoryText i n nextSubgroup subgroup unit;
 	%let n = %sysfunc(countw(&subgroup)); *n subgroups;
 	%do i = 1 %to &n; *subgroup;
 		%let nextSubgroup = %scan(&subgroup,&i); *select subgroup code;
@@ -254,26 +287,25 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		run;
 	%end; *subgroup;
 %mend outcomesSubgroupNoGaps;
+
+/* 
+Purpose
+		
+Parameters
+		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		category:
+Inputs
+		
+Outputs
+		
+Use
+		%subgroupOutcomes(unit=collegeCurrent,category=paidIntern coop)
+		
 	
-	
-%outcomesSubgroupNoGaps(unit=collegeCurrent,
-						categoryText=&destination,
-						categoryName='Destination',
-		  				subgroup=&raceAll)
-		  
-%outcomesSubgroupNoGaps(unit=collegeCurrent,
-						categoryText=&destination,
-						categoryName='Destination',
-						subgroup=&govaAll)
-
-
-
-/*---------- Subgroup x destination -----------*/
-		ods text="~S={font_size=14pt}{\pard\s3 Destination heat map \par}"; *H3;
-
+*/
 %macro subgroupOutcomes(unit=,category=,
 	des='Tables of gaps for unit x subgroup list within each category');
-	%local n i unit category nextCategory;
+	%local category i n nextCategory unit;
 	%let n = %sysfunc(countw(&category)); *n subgroups;
 	%do i = 1 %to &n; *subgroup;
 		%let nextCategory = %scan(&category,&i); *select subgroup code;
@@ -362,18 +394,27 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		run;	
 	%end; *subgroup;
 %mend subgroupOutcomes;
-	
-%subgroupOutcomes(unit=collegeCurrent,
-			  	  category=&destinationAll)		
 
-
-
-/*----- Destination x subgroup x subgroup -----*/
-		ods text="~S={font_size=14pt}{\pard\s3 Subgroup combinations \par}"; *H3;
+/* 
+Purpose
 		
+Parameters
+		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		category:
+		group1:
+		group2:
+Inputs
+		
+Outputs
+		
+Use
+		%outcomesSubgroup2WithGap(unit=collegeCurrent,category=paidIntern coop,group1=transf female,group2=female oneGen)
+		
+	
+*/
 %macro outcomesSubgroup2WithGaps(unit=,category=,group1=,group2=,
 	des='Tables for unit x (subgroup x subgroup) percents and 3 columns of gaps, 1 table per category');
-	%local n i j groupID1 groupID2 unit category nextCategory ngroup group1 group2;
+	%local category group1 group2 groupID1 groupID2 i j n nextCategory ngroup  unit;
 	%let ngroup = %sysfunc(countw(&group1)); *ngroup subgroups;
 	%let n = %sysfunc(countw(&category)); *n categories;
 	
@@ -417,16 +458,28 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		%end; *destinations;
 	%end; *subgroups;
 %mend outcomesSubgroup2WithGaps;
+
+/* 
+Purpose
+		
+Parameters
+		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		category:
+		group1:
+		group2:
+Inputs
+		
+Outputs
+		
+Use
+		%outcomesSubgroup2NoGaps(unit=collegeCurrent,category=paidIntern coop,group1=asian white,group2=female transf)
+		
 	
-%outcomesSubgroup2WithGaps(unit=collegeCurrent,
-				  		   category=&destinationShort, 
-						   group1=&subgroup1, 
-						   group2=&subgroup2)	
-		
-		
+*/
+
 %macro outcomesSubgroup2NoGaps(unit=,category=,group1=,group2=,
 	des='Tables of unit x (subgroup x subgroup) percents by category');
-	%local n i j unit category nextCategory group1 group2 groupID2 ngroup;
+	%local category group1 group2 groupID2 i j n nextCategory ngroup unit;
 	%let ngroup = %sysfunc(countw(&group2));
 	%let n = %sysfunc(countw(&destination)); *n destinations;
 	
@@ -473,6 +526,65 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		%end; *destinations;
 	%end; *subgroups;
 %mend outcomesSubgroup2NoGaps;
+
+
+/*-------------- Report set-up ----------------*/
+options nodate orientation=landscape;
+ods rtf file="&pathOut\participation.rtf" keepn startpage=no wordstyle="{\s1 Heading 1 \s2 Heading 2 \s3 Heading 3;}";
+
+ods escapechar='~';
+
+
+
+/*--------------- Destination -----------------*/
+ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
+
+	ods text="~S={font_size=16pt}{\pard\s2\b Destination \par}"; *H2;
+
+%outcomes(unit=collegeCurrent,
+		  categoryText=&destination,
+		  categoryName='Destination')
+
+
+
+/*---------- Destination x subgroup -----------*/
+	ods text="~S={font_size=16pt}{\pard\s2\b Demographic \par}"; *H2;
+
+		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
+	
+%outcomesSubgroupWithGaps(unit=collegeCurrent,
+						  categoryText=&destination,
+						  categoryName='Destination',
+						  subgroup=&subgroupAll, 
+						  subgroupNames=&subgroupAllNames)
+	
+%outcomesSubgroupNoGaps(unit=collegeCurrent,
+						categoryText=&destination,
+						categoryName='Destination',
+		  				subgroup=&raceAll)
+		  
+%outcomesSubgroupNoGaps(unit=collegeCurrent,
+						categoryText=&destination,
+						categoryName='Destination',
+						subgroup=&govaAll)
+
+
+
+/*---------- Subgroup x destination -----------*/
+		ods text="~S={font_size=14pt}{\pard\s3 Destination heat map \par}"; *H3;
+
+%subgroupOutcomes(unit=collegeCurrent,
+			  	  category=&destinationAll)		
+
+
+
+/*----- Destination x subgroup x subgroup -----*/
+		ods text="~S={font_size=14pt}{\pard\s3 Subgroup combinations \par}"; *H3;
+	
+%outcomesSubgroup2WithGaps(unit=collegeCurrent,
+				  		   category=&destinationShort, 
+						   group1=&subgroup1, 
+						   group2=&subgroup2)	
 	
 %outcomesSubgroup2NoGaps(unit=collegeCurrent,
 					     category=&destinationShort, 
@@ -626,6 +738,40 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 /*---------------- EL - course ----------------*/
 ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Courses \par}"; *H1;
 
+	ods text="~S={font_size=16pt}{\pard\s2\b EL - courses \par}"; *H2;
+			 
+	
+	
+/*---------- EL course x subgroup -------------*/
+	ods text="~S={font_size=16pt}{\pard\s2\b Demographic \par}"; *H2;
+
+		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
+
+
+/*---------- Subgroup x EL course -------------*/
+		ods text="~S={font_size=14pt}{\pard\s3 Course heat map \par}"; *H3;
+
+
+/*------------- EL course x GOVA --------------*/		
+		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
+
+
+/*---- EL course x discipine x subgroup -------*/
+	ods text="~S={font_size=16pt}{\pard\s2\b Discipline \par}"; *H2;
+			 
+			 
+/*---- EL course x discipline x subgroup ------*/
+	ods text="~S={font_size=16pt}{\pard\s2\b Demographic \par}"; *H2;
+
+		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
+
+
+/*---- Subgroup x discipline x EL course -----*/
+		ods text="~S={font_size=14pt}{\pard\s3 Course heat map \par}"; *H3;
+
+
+/*------ EL course x discipline x GOVA --------*/		
+		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
 
 
 ods rtf close;
