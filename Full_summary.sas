@@ -74,7 +74,9 @@ run;
 %let destinationAll=contEd military notSeeking lookWork lookEducation looking volunteerJob work;
 %let destinationShort=contEd looking work;
 
-
+%let el="coop" "fieldStudy" "paidIntern" "ptJob" "summerJob" "research" "unpaidIntern" "volunteer" "pdCo" "pdCoUr";
+%let elAll=coop fieldStudy paidIntern ptJob summerJob research unpaidIntern volunteer pdCo pdCoUr;
+%let elShort=paidIntern research unpaidIntern pdCo pdCoUr;
 
 /*
 %let subgroupAll=athlet cadet female instate int oneGen rural transf urm urmaus urmous uss vet;
@@ -82,6 +84,7 @@ run;
 	URM URM-and-USS URM-or-USS USS veteran;
 
 %let raceAll=asian black hispani island native tworace white;
+%let raceShort=asian black hispani tworace white
 
 %let govaAll=gova1 gova2 gova3 gova4 gova5 gova6 gova7 gova8 gova9;
 
@@ -95,6 +98,7 @@ run;
 %let subgroupAllNames=URM transfer first-generation female;
 
 %let raceAll=asian black hispani;
+%let raceShort=asian black hispani tworace white;
 
 %let govaAll=gova1 gova2 gova3;
 
@@ -136,7 +140,7 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		define avg / analysis mean '' format=percentn10.1;
 	run;
 	
-	ods text="~S={font_size=12pt}{\pard Destinations reported by 20&currentYearFDS. graduates \par}";
+	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&currentYearFDS. graduates \par}";
 	*table unit x category for most recent year;
 	proc report data=dataSum.fdsMeansInt1;
 		where &unit is not missing and 
@@ -170,7 +174,7 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		%let nextSubgroup = %scan(&subgroup,&i); *select subgroup code;
 		%let nextSubgroupName = %scan(&subgroupNames,&i,' '); *select subgroup name;
 				
-		ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to 20&currentYearFDS graduates by &nextSubgroupName \par}";
+		ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYearFDS. to 20&currentYearFDS graduates by &nextSubgroupName \par}";
 		
 		*table category x (unit x subgroup) with percents;
 		proc report data=dataSum.fdsMeansInt1 headline;
@@ -188,7 +192,7 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 			define &nextSubgroup / across;
 		run;
 
-		ods text="~S={font_size=12pt}{\pard Destination gaps reported by 20&startYearFDS. to 20&currentYearFDS graduates for &nextSubgroupName - alternate subgroup \par}";
+		ods text="~S={font_size=12pt}{\pard &categoryName gaps reported by 20&startYearFDS. to 20&currentYearFDS graduates for &nextSubgroupName - alternate subgroup \par}";
 		
 		*table category x unit with gaps for given subgroup;
 		proc report data=dataSum.fdsMeansInt1 headline style(column)={backgroundcolor=range. foreground=text.};
@@ -213,6 +217,7 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 				if _c15_ < _c14_ then _c16_ = _c16_ * -1;
 				if _c18_ < _c17_ then _c19_ = _c19_ * -1;
 				if _c21_ < _c20_ then _c22_ = _c22_ * -1;
+				if _c24_ < _c23_ then _c25_ = _c25_ * -1;
 			endcomp;
 		run;
 	%end; *subgroup;
@@ -232,7 +237,7 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 	%do i = 1 %to &n; *subgroup;
 		%let nextSubgroup = %scan(&subgroup,&i); *select subgroup code;
 				
-		ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to 20&currentYearFDS graduates for &nextSubgroup \par}";
+		ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYearFDS. to 20&currentYearFDS graduates for &nextSubgroup \par}";
 		*table category x unit for given subgroup;
 		proc report data=dataSum.fdsMeansInt1 headline;
 			where &unit is not missing and
@@ -366,20 +371,20 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 /*----- Destination x subgroup x subgroup -----*/
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup combinations \par}"; *H3;
 		
-%macro outcomesSubgroup2WithGaps(unit=,destination=,group1=,group2=,
+%macro outcomesSubgroup2WithGaps(unit=,category=,group1=,group2=,
 	des='Tables for unit x (subgroup x subgroup) percents and 3 columns of gaps, 1 table per category');
-	%local n i j groupID1 groupID2 unit destination nextDest ngroup group1 group2;
+	%local n i j groupID1 groupID2 unit category nextCategory ngroup group1 group2;
 	%let ngroup = %sysfunc(countw(&group1)); *ngroup subgroups;
-	%let n = %sysfunc(countw(&destination)); *n destinations;
+	%let n = %sysfunc(countw(&category)); *n categories;
 	
 	%do j = 1 %to &ngroup; *subgroups;
 		%let groupID1 = %scan(&group1,&j); *subgroup 1;
 		%let groupID2 = %scan(&group2,&j); *subgroup 2;
 	
 		%do i = 1 %to &n; *destination;
-			%let nextDest = %scan(&destination,&i); *select destination code;
+			%let nextCategory = %scan(&category,&i); *select destination code;
 			
-			ods text="~S={font_size=12pt}{\pard &nextDest reported by 20&startYearFDS. to 20&currentYearFDS graduates for &groupID1 x &groupID2 \par}";
+			ods text="~S={font_size=12pt}{\pard &nextCategory reported by 20&startYearFDS. to 20&currentYearFDS graduates for &groupID1 x &groupID2 \par}";
 			*table unit x (subgroup x subgroup) percents and gaps by category;
 			proc report data=dataSum.fdsMeansInt2 headline;
 			where &unit is not missing and
@@ -389,7 +394,7 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 				nInteractions = 2 and
 				&groupID1 is not missing and
 				&groupID2 is not missing and 
-				category = %sysfunc(quote(&nextDest,"'"));
+				category = %sysfunc(quote(&nextCategory,"'"));
 			column &unit avg,&groupID1,&groupID2 blank gap1 gap2 gap3;
 			define &unit / group 'Unit';
 			define avg / analysis '' sum format=percentn10.1 ;
@@ -414,14 +419,14 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 %mend outcomesSubgroup2WithGaps;
 	
 %outcomesSubgroup2WithGaps(unit=collegeCurrent,
-				  		   destination=&destinationShort, 
+				  		   category=&destinationShort, 
 						   group1=&subgroup1, 
 						   group2=&subgroup2)	
 		
 		
-%macro outcomesSubgroup2NoGaps(unit=,destination=,group1=,group2=,
+%macro outcomesSubgroup2NoGaps(unit=,category=,group1=,group2=,
 	des='Tables of unit x (subgroup x subgroup) percents by category');
-	%local n i j unit destination nextDest group1 group2 groupID2 ngroup;
+	%local n i j unit category nextCategory group1 group2 groupID2 ngroup;
 	%let ngroup = %sysfunc(countw(&group2));
 	%let n = %sysfunc(countw(&destination)); *n destinations;
 	
@@ -429,9 +434,9 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 		%let groupID2 = %scan(&group2,&j); *subgroup 2;
 	
 		%do i = 1 %to &n; *destination;
-			%let nextDest = %scan(&destination,&i); *select destination code;
+			%let nextCategory = %scan(&category,&i); *select destination code;
 			
-			ods text="~S={font_size=12pt}{\pard &nextDest reported by 20&startYearFDS. to 20&currentYearFDS graduates for &groupID2 x race \par}";
+			ods text="~S={font_size=12pt}{\pard &nextCategory reported by 20&startYearFDS. to 20&currentYearFDS graduates for &groupID2 x race \par}";
 			*table unit x (subgroup 2 x subgroup 1) by category;
 			proc report data=dataSum.fdsMeansInt2 headline;
 			where &unit is not missing and
@@ -440,25 +445,28 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 				endYear = &currentYearFDS and 
 				nInteractions = 2 and
 				&groupID2 is not missing and 
-				category = %sysfunc(quote(&nextDest,"'"));
-			column &unit avg,&groupID2,(asian black hispani island native tworace white) lastvar;
+				category = %sysfunc(quote(&nextCategory,"'"));
+			column &unit avg,&groupID2,(asian black hispani tworace white) lastvar;
 			define &unit / group 'Unit';
 			define avg / analysis '' sum format=percentn10.1 ;
 			define &groupID2 / across;
 			define asian / across missing;
 			define black / across missing;
 			define hispani / across missing;
-			define island / across missing;
-			define native / across missing;
 			define tworace / across missing;
 			define white / across missing;
 			define lastvar / computed noprint;
-			compute lastvar;
+			compute lastvar; *removes text in columns for missing values;
 				_c2_ = .;
 				_c5_ = .;
 				_c8_ = .;
 				_c11_ = .; 
-				** continue when have issues fixed;
+				_c14_ = .;
+				_c17_ = .;
+				_c20_ = .;
+				_c23_ = .;
+				_c26_ = .;
+				_c29_ = .;
 			endcomp;
 		run;
 			
@@ -467,8 +475,8 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 %mend outcomesSubgroup2NoGaps;
 	
 %outcomesSubgroup2NoGaps(unit=collegeCurrent,
-					     destination=&destinationShort, 
-					     race=&raceAll, 
+					     category=&destinationShort, 
+					     group1=&raceShort, 
 					     group2=&subgroupCrossRace)	
 		
 		
@@ -526,7 +534,94 @@ ods text="~S={font_size=12pt}{\pard Destinations reported by 20&startYearFDS. to
 /*------------- EL - self-report --------------*/
 ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \par}"; *H1;
 
+	ods text="~S={font_size=16pt}{\pard\s2\b Experiential Learning \par}"; *H2;
 
+	%outcomes(unit=collegeCurrent,
+			 categoryText=&el,
+			 categoryName='Experiential Learning')
+			 
+			 
+/*-------- EL self-report x subgroup ----------*/
+	ods text="~S={font_size=16pt}{\pard\s2\b Demographic \par}"; *H2;
+
+		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
+
+		%outcomesSubgroupWithGaps(unit=collegeCurrent,
+								  categoryText=&el,
+								  categoryName='Experience',
+								  subgroup=&subgroupAll,
+								  subgroupNames=&subgroupAllNames)
+
+		%outcomesSubgroupNoGaps(unit=collegeCurrent,
+								categoryText=&el,
+								categoryName='Experience',
+								subgroup=&raceAll)
+		
+		%outcomesSubgroupNoGaps(unit=collegeCurrent,
+								categoryText=&el,
+								categoryName='Experience',
+								subgroup=&govaAll)
+		
+/*-------- Subgroup x EL self-report ----------*/
+		ods text="~S={font_size=14pt}{\pard\s3 EL heat map \par}"; *H3;
+
+		%subgroupOutcomes(unit=collegeCurrent,
+						  category=&elAll)
+
+/*---- EL self-report x subgroup x subgroup ---*/
+		ods text="~S={font_size=14pt}{\pard\s3 Subgroup combinations \par}"; *H3;
+		
+		%outcomesSubgroup2WithGaps(unit=collegeCurrent,
+								   category=&elShort,
+								   group1=&subgroup1,
+								   group2=&subgroup2)
+		
+/*----------- EL self-report x GOVA -----------*/
+		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
+		
+
+
+
+/*------- EL self-report x discipline ---------*/
+	ods text="~S={font_size=16pt}{\pard\s2\b Discipline \par}"; *H2;
+
+		ods text="~S={font_size=14pt}{\pard\s3 EL - self-report \par}"; *H3;
+		
+		%outcomes(unit=generalDiscipline,
+			 categoryText=&el,
+			 categoryName='Experience')
+			 
+/*--  EL self-report x discipline x Subgroup --*/
+		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
+
+		%outcomesSubgroupWithGaps(unit=generalDiscipline,
+								  categoryText=&el,
+								  categoryName='Experience',
+								  subgroup=&subgroupAll,
+								  subgroupNames=&subgroupAllNames)
+
+		%outcomesSubgroupNoGaps(unit=generalDiscipline,
+								categoryText=&el,
+								categoryName='Experience',
+								subgroup=&raceAll)
+		
+		%outcomesSubgroupNoGaps(unit=generalDiscipline,
+								categoryText=&el,
+								categoryName='Experience',
+								subgroup=&govaAll)
+
+/*-- Subgroup x discipline x EL self-report ---*/
+		ods text="~S={font_size=14pt}{\pard\s3 EL heat map \par}"; *H3;
+
+		%subgroupOutcomes(unit=generalDiscipline,
+						  category=&elAll)
+		
+		
+/*----- EL self-report x discipline x GOVA ----*/
+		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
+		
+		
+		
 
 /*---------------- EL - course ----------------*/
 ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Courses \par}"; *H1;
