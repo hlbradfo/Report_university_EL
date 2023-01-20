@@ -118,6 +118,7 @@ Purpose
 		Create table with unit x category pooled across years and for the most recent year
 Parameters
 		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		type: 
 		categoryText: possible character values for category variable, names encolsed in " "
 		categoryName: text name to display in table caption and across header
 Inputs
@@ -125,7 +126,7 @@ Inputs
 Outputs
 		2 report tables
 Use
-		%outcomes(unit=collegeCurrent,categoryText="paidIntern" "coop",categoryName='Experience')
+		%outcomes(unit=collegeCurrent,type='fds',categoryText="paidIntern" "coop",categoryName='Experience')
 		Expereinces reported from start year to stop year
 		Unit	paidIntern	coop
 		AAD		75%			2%
@@ -137,35 +138,49 @@ Use
 		CALS	34%			2%
 */
 
-%macro outcomes(unit=,categoryText=,categoryName=,
+%macro outcomes(unit=,type=,categoryText=,categoryName=,
 		des='Table with unit x category list pooled across years, table of same for most recent year');
-	%local categoryName categoryText unit;
+	%local categoryName categoryText colName data endYear startYear type unit;
+	%if %upcase(&type) = 'FDS' %then %do;
+		%let colName = category;
+		%let data = fdsMeans;
+		%let startYear = &startYearFDS;
+		%let endYear = &currentYearFDS;
+	%end;
+	%else %if %upcase(&type) = 'ENROLL' %then %do;
+		%let colName = course;
+		%let data = enrollMeans;
+		%let startYear = &startYearGrad;
+		%let endYear = &currentYearGrad;
+	%end;
+	%else %put 'Invalid TYPE. Type can be fds or enroll.';
+		
 	
-	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYearFDS. to 20&currentYearFDS. graduates \par}";
+	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYear to 20&endYear graduates \par}";
 	*table unit x category pooled across years;
-	proc report data=dataSum.fdsMeans;
+	proc report data=dataSum.&data;
 		where &unit is not missing and
 			&unit ne 'univ' and
-			startYear = &startYearFDS and 
-			endYear= &currentYearFDS and 
-			category in (&categoryText);
-		column &unit avg,category;
+			startYear = &startYear and 
+			endYear= &endYear and 
+			&colName in (&categoryText);
+		column &unit avg,&colName;
 		define &unit / group 'Unit';
-		define category / across &categoryName;
+		define &colName / across &categoryName;
 		define avg / analysis mean '' format=percentn10.1;
 	run;
 	
-	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&currentYearFDS. graduates \par}";
+	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&endYear graduates \par}";
 	*table unit x category for most recent year;
-	proc report data=dataSum.fdsMeansInt1;
+	proc report data=dataSum.&data.Int1;
 		where &unit is not missing and 
 			&unit ne 'univ' and
-			gradYear= &currentYearFDS and 
+			gradYear= &endYear and 
 			nInteractions = 1 and
-			category in (&categoryText);
-		column &unit avg,category;
+			&colName in (&categoryText);
+		column &unit avg,&colName;
 		define &unit / group 'Unit';
-		define category / across &categoryName;
+		define &colName / across &categoryName;
 		define avg / analysis mean '' format=percentn10.1;
 	run;
 %mend outcomes;
@@ -175,6 +190,7 @@ Purpose
 		
 Parameters
 		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		type: 
 		categoryText: possible character values for category variable, names encolsed in " "
 		categoryName: text name to display in table caption and across header
 		subgroup: 
@@ -184,51 +200,65 @@ Inputs
 Outputs
 		
 Use
-		%outcomesSubgroupWithGaps(unit=collegeCurrent,categoryText="paidIntern" "coop",categoryName='Experience',
+		%outcomesSubgroupWithGaps(unit=collegeCurrent,type='fds',categoryText="paidIntern" "coop",categoryName='Experience',
 		subgroup=transf female,subgroupNames=transfer female)
 		
 	
 */
-%macro outcomesSubgroupWithGaps(unit=,categoryText=,categoryName=,subgroup=,subgroupNames=,
+%macro outcomesSubgroupWithGaps(unit=,type=,categoryText=,categoryName=,subgroup=,subgroupNames=,
 	des='Table of percents for category x (unit x subgroup) and table of gaps for category x unit');
-	%local categoryName categoryText i n nextSubgroup nextSubgroupName subgroup subgroupNames unit;
+	%local categoryName categoryText colName data endYear i n nextSubgroup nextSubgroupName startYear subgroup subgroupNames type unit;
+	%if %upcase(&type) = 'FDS' %then %do;
+		%let colName = category;
+		%let data = fdsMeans;
+		%let startYear = &startYearFDS;
+		%let endYear = &currentYearFDS;
+	%end;
+	%else %if %upcase(&type) = 'ENROLL' %then %do;
+		%let colName = course;
+		%let data = enrollMeans;
+		%let startYear = &startYearGrad;
+		%let endYear = &currentYearGrad;
+	%end;
+	%else %put 'Invalid TYPE. Type can be fds or enroll.';
+	
 	%let n = %sysfunc(countw(&subgroup)); *n subgroups;
 	%do i = 1 %to &n; *subgroup;
 		%let nextSubgroup = %scan(&subgroup,&i); *select subgroup code;
 		%let nextSubgroupName = %scan(&subgroupNames,&i,' '); *select subgroup name;
 				
-		ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYearFDS. to 20&currentYearFDS graduates by &nextSubgroupName \par}";
+		ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYear to 20&endYear graduates by &nextSubgroupName \par}";
 		
 		*table category x (unit x subgroup) with percents;
-		proc report data=dataSum.fdsMeansInt1 headline;
+		proc report data=dataSum.&data.Int1 headline;
 			where &unit is not missing and
 				&unit ne 'univ' and
-				startYear = &startYearFDS and
-				endYear = &currentYearFDS and 
+				startYear = &startYear and
+				endYear = &endYear and 
 				nInteractions = 1 and
 				&nextSubgroup is not missing and  
-				category in (&categoryText);
-			column category avg,&unit,&nextSubgroup;
+				&colName in (&categoryText);
+			column &colName avg,&unit,&nextSubgroup;
 			define &unit / across 'Unit';
-			define category / group &categoryName;
+			define &colName / group &categoryName;
 			define avg / analysis '' format=percentn10.1;
 			define &nextSubgroup / across;
 		run;
 
-		ods text="~S={font_size=12pt}{\pard &categoryName gaps reported by 20&startYearFDS. to 20&currentYearFDS graduates for &nextSubgroupName - alternate subgroup \par}";
+		ods text="~S={font_size=12pt}{\pard &categoryName gaps reported by 20&startYear to 20&endYear graduates for &nextSubgroupName - alternate subgroup \par}";
 		
 		*table category x unit with gaps for given subgroup;
-		proc report data=dataSum.fdsMeansInt1 headline style(column)={backgroundcolor=range. foreground=text.};
+		proc report data=dataSum.&data.Int1 headline style(column)={backgroundcolor=range. foreground=text.};
 			where &unit is not missing and
 				&unit ne 'univ' and
-				startYear = &startYearFDS and
-				endYear = &currentYearFDS and 
+				startYear = &startYear and
+				endYear = &endYear and 
 				nInteractions = 1 and
 				&nextSubgroup is not missing and  
-				category in (&categoryText);
-			column category avg,&unit,(sum range),&nextSubgroup lastvar;
+				&colName in (&categoryText);
+			column &colName avg,&unit,(sum range),&nextSubgroup lastvar;
 			define &unit / across 'Unit';
-			define category / group &categoryName;
+			define &colName / group &categoryName;
 			define avg / analysis '' format=percentn10.1 ;
 			define &nextSubgroup / across '' noprint;
 			define lastvar / computed noprint;
@@ -263,26 +293,40 @@ Use
 		
 	
 */
-%macro outcomesSubgroupNoGaps(unit=,categoryText=,categoryName=,subgroup=,
+%macro outcomesSubgroupNoGaps(unit=,type=,categoryText=,categoryName=,subgroup=,
 	des='Tables of percents for category x unit for each subgroup');
-	%local categoryName categoryText i n nextSubgroup subgroup unit;
+	%local categoryName categoryText colName data endYear i n nextSubgroup startYear subgroup type unit;
+	%if %upcase(&type) = 'FDS' %then %do;
+		%let colName = category;
+		%let data = fdsMeans;
+		%let startYear = &startYearFDS;
+		%let endYear = &currentYearFDS;
+	%end;
+	%else %if %upcase(&type) = 'ENROLL' %then %do;
+		%let colName = course;
+		%let data = enrollMeans;
+		%let startYear = &startYearGrad;
+		%let endYear = &currentYearGrad;
+	%end;
+	%else %put 'Invalid TYPE. Type can be fds or enroll.';
+	
 	%let n = %sysfunc(countw(&subgroup)); *n subgroups;
 	%do i = 1 %to &n; *subgroup;
 		%let nextSubgroup = %scan(&subgroup,&i); *select subgroup code;
 				
-		ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYearFDS. to 20&currentYearFDS graduates for &nextSubgroup \par}";
+		ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYear to 20&endYear graduates for &nextSubgroup \par}";
 		*table category x unit for given subgroup;
-		proc report data=dataSum.fdsMeansInt1 headline;
+		proc report data=dataSum.&data.Int1 headline;
 			where &unit is not missing and
 				&unit ne 'univ' and
-				startYear = &startYearFDS and
-				endYear = &currentYearFDS and 
+				startYear = &startYear and
+				endYear = &endYear and 
 				nInteractions = 1 and
 				&nextSubgroup = 1 and  
-				category in (&categoryText);
-			column category avg,&unit;
+				&colName in (&categoryText);
+			column &colName avg,&unit;
 			define &unit / across 'Unit';
-			define category / group &categoryName;
+			define &colName / group &categoryName;
 			define avg / analysis '' format=percentn10.1;
 		run;
 	%end; *subgroup;
@@ -293,32 +337,48 @@ Purpose
 		
 Parameters
 		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		type: 
 		category:
 Inputs
 		
 Outputs
 		
 Use
-		%subgroupOutcomes(unit=collegeCurrent,category=paidIntern coop)
+		%subgroupOutcomes(unit=collegeCurrent,type='fds',category=paidIntern coop)
 		
 	
 */
-%macro subgroupOutcomes(unit=,category=,
+%macro subgroupOutcomes(unit=,type=,category=,
 	des='Tables of gaps for unit x subgroup list within each category');
-	%local category i n nextCategory unit;
+	%local category colName data endYear i n nextCategory startYear type unit;
+	
+	%if %upcase(&type) = 'FDS' %then %do;
+		%let colName = category;
+		%let data = fdsMeans;
+		%let startYear = &startYearFDS;
+		%let endYear = &currentYearFDS;
+	%end;
+	%else %if %upcase(&type) = 'ENROLL' %then %do;
+		%let colName = course;
+		%let data = enrollMeans;
+		%let startYear = &startYearGrad;
+		%let endYear = &currentYearGrad;
+	%end;
+	%else %put 'Invalid TYPE. Type can be fds or enroll.';
+	
 	%let n = %sysfunc(countw(&category)); *n subgroups;
 	%do i = 1 %to &n; *subgroup;
 		%let nextCategory = %scan(&category,&i); *select subgroup code;
 
-		ods text="~S={font_size=12pt}{\pard &nextCategory gaps reported by 20&startYearFDS. to 20&currentYearFDS graduates \par}";
+		ods text="~S={font_size=12pt}{\pard &nextCategory gaps reported by 20&startYear to 20&endYear graduates \par}";
 		*table of unit x subgroups for gaps within each category;
-		proc report data=dataSum.fdsMeansInt1 headline style(column)={backgroundcolor=range. foreground=text.};
+		proc report data=dataSum.&data.Int1 headline style(column)={backgroundcolor=range. foreground=text.};
 			where &unit is not missing and
 				&unit ne 'univ' and
-				startYear = &startYearFDS and
-				endYear = &currentYearFDS and 
+				startYear = &startYear and
+				endYear = &endYear and 
 				nInteractions = 1 and
-				category = %sysfunc(quote(&nextCategory,"'"));
+				&colName = %sysfunc(quote(&nextCategory,"'"));
 			column &unit avg,
 				(athlet cadet female instate int oneGen rural transf urm urmaus urmous uss vet) 
 				athlet1 cadet1 female1 instate1 int1 oneGen1 rural1 transf1 urm1 urmaus1 urmous1 uss1 vet1;
@@ -412,9 +472,24 @@ Use
 		
 	
 */
-%macro outcomesSubgroup2WithGaps(unit=,category=,group1=,group2=,
+%macro outcomesSubgroup2WithGaps(unit=,type=,category=,group1=,group2=,
 	des='Tables for unit x (subgroup x subgroup) percents and 3 columns of gaps, 1 table per category');
-	%local category group1 group2 groupID1 groupID2 i j n nextCategory ngroup  unit;
+	%local category colName data endYear group1 group2 groupID1 groupID2 i j n nextCategory ngroup startYear type unit;
+	
+	%if %upcase(&type) = 'FDS' %then %do;
+		%let colName = category;
+		%let data = fdsMeans;
+		%let startYear = &startYearFDS;
+		%let endYear = &currentYearFDS;
+	%end;
+	%else %if %upcase(&type) = 'ENROLL' %then %do;
+		%let colName = course;
+		%let data = enrollMeans;
+		%let startYear = &startYearGrad;
+		%let endYear = &currentYearGrad;
+	%end;
+	%else %put 'Invalid TYPE. Type can be fds or enroll.';
+	
 	%let ngroup = %sysfunc(countw(&group1)); *ngroup subgroups;
 	%let n = %sysfunc(countw(&category)); *n categories;
 	
@@ -425,17 +500,17 @@ Use
 		%do i = 1 %to &n; *destination;
 			%let nextCategory = %scan(&category,&i); *select destination code;
 			
-			ods text="~S={font_size=12pt}{\pard &nextCategory reported by 20&startYearFDS. to 20&currentYearFDS graduates for &groupID1 x &groupID2 \par}";
+			ods text="~S={font_size=12pt}{\pard &nextCategory reported by 20&startYear to 20&endYear graduates for &groupID1 x &groupID2 \par}";
 			*table unit x (subgroup x subgroup) percents and gaps by category;
-			proc report data=dataSum.fdsMeansInt2 headline;
+			proc report data=dataSum.&data.Int2 headline;
 			where &unit is not missing and
 				&unit ne 'univ' and
-				startYear = &startYearFDS and
-				endYear = &currentYearFDS and 
+				startYear = &startYear and
+				endYear = &endYear and 
 				nInteractions = 2 and
 				&groupID1 is not missing and
 				&groupID2 is not missing and 
-				category = %sysfunc(quote(&nextCategory,"'"));
+				&colName = %sysfunc(quote(&nextCategory,"'"));
 			column &unit avg,&groupID1,&groupID2 blank gap1 gap2 gap3;
 			define &unit / group 'Unit';
 			define avg / analysis '' sum format=percentn10.1 ;
@@ -472,16 +547,31 @@ Inputs
 Outputs
 		
 Use
-		%outcomesSubgroup2NoGaps(unit=collegeCurrent,category=paidIntern coop,group1=asian white,group2=female transf)
+		%outcomesSubgroup2NoGaps(unit=collegeCurrent,type='fds',category=paidIntern coop,group1=asian white,group2=female transf)
 		
 	
 */
 
-%macro outcomesSubgroup2NoGaps(unit=,category=,group1=,group2=,
+%macro outcomesSubgroup2NoGaps(unit=,type=,category=,group1=,group2=,
 	des='Tables of unit x (subgroup x subgroup) percents by category');
-	%local category group1 group2 groupID2 i j n nextCategory ngroup unit;
+	%local category colName data endYear group1 group2 groupID2 i j n nextCategory ngroup startYear type unit;
+	
+	%if %upcase(&type) = 'FDS' %then %do;
+		%let colName = category;
+		%let data = fdsMeans;
+		%let startYear = &startYearFDS;
+		%let endYear = &currentYearFDS;
+	%end;
+	%else %if %upcase(&type) = 'ENROLL' %then %do;
+		%let colName = course;
+		%let data = enrollMeans;
+		%let startYear = &startYearGrad;
+		%let endYear = &currentYearGrad;
+	%end;
+	%else %put 'Invalid TYPE. Type can be fds or enroll.';
+	
 	%let ngroup = %sysfunc(countw(&group2));
-	%let n = %sysfunc(countw(&destination)); *n destinations;
+	%let n = %sysfunc(countw(&category)); *n destinations;
 	
 	%do j = 1 %to &ngroup; *subgroups;
 		%let groupID2 = %scan(&group2,&j); *subgroup 2;
@@ -489,16 +579,16 @@ Use
 		%do i = 1 %to &n; *destination;
 			%let nextCategory = %scan(&category,&i); *select destination code;
 			
-			ods text="~S={font_size=12pt}{\pard &nextCategory reported by 20&startYearFDS. to 20&currentYearFDS graduates for &groupID2 x race \par}";
+			ods text="~S={font_size=12pt}{\pard &nextCategory reported by 20&startYear to 20&endYear graduates for &groupID2 x race \par}";
 			*table unit x (subgroup 2 x subgroup 1) by category;
-			proc report data=dataSum.fdsMeansInt2 headline;
+			proc report data=dataSum.&data.Int2 headline;
 			where &unit is not missing and
 				&unit ne 'univ' and
-				startYear = &startYearFDS and
-				endYear = &currentYearFDS and 
+				startYear = &startYear and
+				endYear = &endYear and 
 				nInteractions = 2 and
 				&groupID2 is not missing and 
-				category = %sysfunc(quote(&nextCategory,"'"));
+				&colName = %sysfunc(quote(&nextCategory,"'"));
 			column &unit avg,&groupID2,(asian black hispani tworace white) lastvar;
 			define &unit / group 'Unit';
 			define avg / analysis '' sum format=percentn10.1 ;
@@ -542,6 +632,7 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 	ods text="~S={font_size=16pt}{\pard\s2\b Destination \par}"; *H2;
 
 %outcomes(unit=collegeCurrent,
+		  type='fds',
 		  categoryText=&destination,
 		  categoryName='Destination')
 
@@ -553,17 +644,20 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
 	
 %outcomesSubgroupWithGaps(unit=collegeCurrent,
+						  type='fds',
 						  categoryText=&destination,
 						  categoryName='Destination',
 						  subgroup=&subgroupAll, 
 						  subgroupNames=&subgroupAllNames)
 	
 %outcomesSubgroupNoGaps(unit=collegeCurrent,
+						type='fds',
 						categoryText=&destination,
 						categoryName='Destination',
 		  				subgroup=&raceAll)
 		  
 %outcomesSubgroupNoGaps(unit=collegeCurrent,
+						type='fds',
 						categoryText=&destination,
 						categoryName='Destination',
 						subgroup=&govaAll)
@@ -574,6 +668,7 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 		ods text="~S={font_size=14pt}{\pard\s3 Destination heat map \par}"; *H3;
 
 %subgroupOutcomes(unit=collegeCurrent,
+			  	  type='fds',
 			  	  category=&destinationAll)		
 
 
@@ -582,11 +677,13 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup combinations \par}"; *H3;
 	
 %outcomesSubgroup2WithGaps(unit=collegeCurrent,
+				  		   type='fds',
 				  		   category=&destinationShort, 
 						   group1=&subgroup1, 
 						   group2=&subgroup2)	
 	
 %outcomesSubgroup2NoGaps(unit=collegeCurrent,
+					     type='fds',
 					     category=&destinationShort, 
 					     group1=&raceShort, 
 					     group2=&subgroupCrossRace)	
@@ -604,6 +701,7 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 	
 		ods text="~S={font_size=14pt}{\pard\s3 Destination \par}"; *H3;
 %outcomes(unit=generalDiscipline,
+		  type='fds',
 		  categoryText=&destination,
 		  categoryName='Destination')
 		
@@ -613,17 +711,20 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
 		
 %outcomesSubgroupWithGaps(unit=generalDiscipline,
+						  type='fds',
 						  categoryText=&destination,
 						  categoryName='Destination',
 						  subgroup=&subgroupAll, 
 			  			  subgroupNames=&subgroupAllNames)
 
 %outcomesSubgroupNoGaps(unit=generalDiscipline,
+						type='fds',
 						categoryText=&destination,
 						categoryName='Destination',
 						subgroup=&raceAll)
 		  
 %outcomesSubgroupNoGaps(unit=generalDiscipline,
+						type='fds',
 						categoryText=&destination,
 						categoryName='Destination',
 						subgroup=&govaAll)
@@ -634,6 +735,7 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 		ods text="~S={font_size=14pt}{\pard\s3 Destination heat map \par}"; *H3;
 		
 %subgroupOutcomes(unit=generalDiscipline,
+				  type='fds',
 				  category=&destinationAll)	
 			  
 			  
@@ -649,8 +751,9 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 	ods text="~S={font_size=16pt}{\pard\s2\b Experiential Learning \par}"; *H2;
 
 	%outcomes(unit=collegeCurrent,
-			 categoryText=&el,
-			 categoryName='Experiential Learning')
+			  type='fds',
+			  categoryText=&el,
+			  categoryName='Experiential Learning')
 			 
 			 
 /*-------- EL self-report x subgroup ----------*/
@@ -659,17 +762,20 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
 
 		%outcomesSubgroupWithGaps(unit=collegeCurrent,
+								  type='fds',
 								  categoryText=&el,
 								  categoryName='Experience',
 								  subgroup=&subgroupAll,
 								  subgroupNames=&subgroupAllNames)
 
 		%outcomesSubgroupNoGaps(unit=collegeCurrent,
+								type='fds',
 								categoryText=&el,
 								categoryName='Experience',
 								subgroup=&raceAll)
 		
 		%outcomesSubgroupNoGaps(unit=collegeCurrent,
+								type='fds',
 								categoryText=&el,
 								categoryName='Experience',
 								subgroup=&govaAll)
@@ -678,12 +784,14 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 		ods text="~S={font_size=14pt}{\pard\s3 EL heat map \par}"; *H3;
 
 		%subgroupOutcomes(unit=collegeCurrent,
+						  type='fds',
 						  category=&elAll)
 
 /*---- EL self-report x subgroup x subgroup ---*/
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup combinations \par}"; *H3;
 		
 		%outcomesSubgroup2WithGaps(unit=collegeCurrent,
+								   type='fds',
 								   category=&elShort,
 								   group1=&subgroup1,
 								   group2=&subgroup2)
@@ -700,24 +808,28 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 		ods text="~S={font_size=14pt}{\pard\s3 EL - self-report \par}"; *H3;
 		
 		%outcomes(unit=generalDiscipline,
-			 categoryText=&el,
-			 categoryName='Experience')
+				  type='fds',
+				  categoryText=&el,
+				  categoryName='Experience')
 			 
 /*--  EL self-report x discipline x Subgroup --*/
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
 
 		%outcomesSubgroupWithGaps(unit=generalDiscipline,
+								  type='fds',
 								  categoryText=&el,
 								  categoryName='Experience',
 								  subgroup=&subgroupAll,
 								  subgroupNames=&subgroupAllNames)
 
 		%outcomesSubgroupNoGaps(unit=generalDiscipline,
+								type='fds',
 								categoryText=&el,
 								categoryName='Experience',
 								subgroup=&raceAll)
 		
 		%outcomesSubgroupNoGaps(unit=generalDiscipline,
+								type='fds',
 								categoryText=&el,
 								categoryName='Experience',
 								subgroup=&govaAll)
@@ -726,6 +838,7 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 		ods text="~S={font_size=14pt}{\pard\s3 EL heat map \par}"; *H3;
 
 		%subgroupOutcomes(unit=generalDiscipline,
+						  type='fds',
 						  category=&elAll)
 		
 		
@@ -740,6 +853,54 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Courses \par}";
 
 	ods text="~S={font_size=16pt}{\pard\s2\b EL - courses \par}"; *H2;
 			 
+
+%outcomes(unit=collegeCurrent,
+		  type='enroll',
+		  categoryText=&course,
+		  categoryName='Course')
+
+%macro outcomes(unit=,categoryText=,categoryName=,
+		des='Table with unit x category list pooled across years, table of same for most recent year');
+	%local categoryName categoryText unit;
+	
+	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&startYearFDS. to 20&currentYearFDS. graduates \par}";
+	*table unit x category pooled across years;
+	proc report data=dataSum.enrollMeans;
+		where collegeCurrent is not missing and
+			collegeCurrent ne 'univ' and
+			startYear = &startYearGrad and 
+			endYear= &currentYearGrad and 
+			course in (&course);
+		column collegeCurrent avg,course;
+		define collegeCurrent / group 'Unit';
+		define course / across 'Course';
+		define avg / analysis mean '' format=percentn10.1;
+	run;
+	
+	proc sql;
+		select *
+		from dataSum.enrollMeans
+		where collegeCurrent is not missing and course = 'ever4994';
+	quit;
+	
+	ods text="~S={font_size=12pt}{\pard &categoryName reported by 20&currentYearFDS. graduates \par}";
+	*table unit x category for most recent year;
+	proc report data=dataSum.fdsMeansInt1;
+		where &unit is not missing and 
+			&unit ne 'univ' and
+			gradYear= &currentYearFDS and 
+			nInteractions = 1 and
+			category in (&categoryText);
+		column &unit avg,category;
+		define &unit / group 'Unit';
+		define category / across &categoryName;
+		define avg / analysis mean '' format=percentn10.1;
+	run;
+%mend outcomes;
+
+
+
+	
 	
 	
 /*---------- EL course x subgroup -------------*/
