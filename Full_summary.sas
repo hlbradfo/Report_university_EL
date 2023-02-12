@@ -1,7 +1,7 @@
 /*==================================================|
 |- Project:		Bridge Experience Program			|
 |- Created:		20230110							|
-|- Revised:		20230121							|
+|- Revised:		20230212							|
 |- Author:		Heather Bradford					|
 |- Purpose:		University data report - Internal	|
 |- Dependency:										|	
@@ -13,14 +13,34 @@
 
 
 /*----------------- Program details -----------------
-A. Libraries
-  Set up file path and libraries for data 
-  All output data files stored in SOC
-  All intermediate files should be stored in Work
-  Need to run this script when opening SAS 
-
+A. Set up
+	Libraries
+ 		Set up file path and libraries for data 
+  		All intermediate files should be stored in Work
+	Formats
+		Format colors of tables like heat map
+		Format colors of maps
+	Parameters
+		Macro variables to calculate output data
+	Macros
+		Macro programs to generate output
+		Program for each type of output
+B. Report
+	Create report for university-level outcomes
+	Includes breakdown by college and by discipline
+	Includes destination outcome, self-reported EL, and EL course enrollment
+	Includes overall outcomes and outcomes disagretated by 1 or more subgroups
+	Most output is across range of years
+	Overall participation included for most recent individual year
 ----------------------------------------------------*/
 
+
+
+/*===============================================
+|												|
+|					Set up 						|
+|												|
+===============================================*/
 
 /*---------------- Libraries ------------------*/
 %let path=C:\Users\hbradford\Local_data_files;
@@ -34,18 +54,19 @@ libname dataIn "&path\dataIn";
 /* Cross-reference library */
 libname xref xlsx "&path\dataIn\Degree_programs.xlsx";
 
+/* Data output library */
+libname dataOut "&path\dataOut";
 
 /* Data summary library */
 libname dataSum "&path\dataSum";
 
-/* Autocall library for macros */
-*options sasautos=("&path\SASCode\SASDataSum\Autocall" sasautos) mautosource;
 
 
 /*----------------- Formats -------------------*/
 proc format library=dataIn cntlin=xref.formats;
 run;
 
+*Format for table as heat map;
 proc format;
 	value range
 		low - -.10 = 'dark red'
@@ -62,14 +83,26 @@ proc format;
 		.03 - high = 'white';
 run;
 
+*Range attribute map for 0 to max range for maps;
+data heatMapColor0Max;
+	retain id "myid";
+	length min max $ 5;
+	input min $ max $ colormodel1 $ colormodel2 $;
+datalines;
+0 100 white cx003C71
+;
+
+
 
 /*--------------- Parameters ------------------*/
 
+*years;
 %let endyearFDS=20;
 %let startYearFDS=18;
 %let endyearGrad=21;
 %let startYearGrad=19;
 
+*variables;
 %let destinationText="contEd" "military" "notSeeking" "lookWork" "lookEducation" "looking" "volunteerJob" "work";
 %let destinationAll=contEd military notSeeking lookWork lookEducation looking volunteerJob work;
 %let destinationShort=contEd looking work;
@@ -81,7 +114,7 @@ run;
 %let courseText="everin34" "eversa34" "everfs34" "ever4994" "ever4974" "everAny34Course";
 %let courseAll=everin34 eversa34 everfs34 ever4994 ever4974 everAny34Course;
 
-/*
+*subgorups;
 %let subgroupAll=athlet cadet female instate int oneGen rural transf urm urmaus urmous uss vet;
 %let subgroupAllNames=athlete cadet female in-state international first-generation rural transfer 
 	URM URM-and-USS URM-or-USS USS veteran;
@@ -94,9 +127,8 @@ run;
 
 %let subgroup1=transf female female female  transf  onegen  rural   rural  rural;
 %let subgroup2=onegen transf onegen instate instate instate instate transf oneGen;
-*/
 
-
+/*
 *testing;
 %let subgroupAll=urm transf onegen female;
 %let subgroupAllNames=URM transfer first-generation female;
@@ -110,6 +142,7 @@ run;
 %let subgroup2=onegen transf onegen;
 
 %let subgroupCrossRace=female transf;
+*/
 
 
 
@@ -139,8 +172,6 @@ Use
 		AAD		74%			1%
 		CALS	34%			2%
 */
-
-
 
 %macro outcomes(unit=,type=,categoryText=,categoryName=,
 		des='Table with unit x category list pooled across years, table of same for most recent year');
@@ -222,8 +253,6 @@ Use
 		
 		Repeat for female
 */
-
-
 
 %macro outcomesSubgroupWithGaps(unit=,type=,categoryText=,categoryName=,subgroup=,subgroupNames=,
 	des='Table of percents for category x (unit x subgroup) and table of gaps for category x unit');
@@ -325,8 +354,6 @@ Use
 		coop		2%		2%
 */
 
-
-
 %macro outcomesSubgroupNoGaps(unit=,type=,categoryText=,categoryName=,subgroup=,
 	des='Tables of percents for category x unit for each subgroup');
 	%local categoryName categoryText colName data endYear i n nextSubgroup startYear subgroup type unit;
@@ -394,8 +421,6 @@ Use
 		AAD		0.1%	-28.7%	-0.3%
 		CALS	1.9%	-21.0%	7.1%
 */
-
-
 
 %macro subgroupOutcomes(unit=,type=,category=,
 	des='Tables of gaps for unit x subgroup list within each category');
@@ -536,8 +561,6 @@ Use
 		...
 */
 
-
-
 %macro outcomesSubgroup2WithGaps(unit=,type=,category=,group1=,group2=,
 	des='Tables for unit x (subgroup x subgroup) percents and 3 columns of gaps, 1 table per category');
 	%local category colName data endYear group1 group2 groupID1 groupID2 i j n nextCategory ngroup startYear type unit;
@@ -600,9 +623,11 @@ Use
 	%end; *subgroups;
 %mend outcomesSubgroup2WithGaps;
 
+
+
 /* 
 Purpose
-		
+		Create tables for unit x (subgroup x subgroup) percents, 1 table per category
 Parameters
 		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
 		type: 'fds' or 'enroll' based on data source
@@ -631,8 +656,6 @@ Use
 		coop transf x race
 		...
 */
-
-
 
 %macro outcomesSubgroup2NoGaps(unit=,type=,category=,group1=,group2=,
 	des='Tables of unit x (subgroup x subgroup) percents by category');
@@ -699,6 +722,109 @@ Use
 	%end; *subgroups;
 %mend outcomesSubgroup2NoGaps;
 
+
+
+/* 
+Purpose
+		Create GOVA map for specific category
+Parameters
+		unit: level of resolution, often collegeCurrent, collegeActual, or generalDiscipline
+		type: 'fds' or 'enroll' based on data source
+		category: category value
+		title: title of map
+Inputs
+		Summarized overall means by GOVA region
+		Map data for graphing
+Outputs
+		Viginia map colored by GOVA region for each level of &unit
+Use
+		%mapData(unit=collegeCurrent,type='FDS',category=paidIntern,title=Paid Internship)
+*/
+
+%macro mapData(unit=,type=,title=,category=);
+	%local category data i nextUnit title type unit unitLevels;
+	
+	%if %upcase(&type) = 'FDS' %then %do;
+		%let colName = category;
+		%let data = fdsMeansInt1;
+		%let startYear = &startYearFDS;
+		%let endYear = &endyearFDS;
+	%end;
+	%else %if %upcase(&type) = 'ENROLL' %then %do;
+		%let colName = course;
+		%let data = enrollMeansInt1;
+		%let startYear = &startYearGrad;
+		%let endYear = &endyearGrad;
+	%end;
+	%else %put 'Invalid TYPE. Type can be fds or enroll.';
+	
+	*identify unique values of unit;
+	proc sql noprint;
+		select distinct &unit into : unitLevels separated by '|'
+		from dataSum.&data
+		where &unit is not missing and &unit ne 'univ';
+	quit;
+
+	%do i = 1 %to %sysfunc(countc(&unitLevels,'|'))+1; *unit level;
+		%let nextUnit = %scan(&unitLevels,&i,'|'); *select level of unit;
+	
+		data mapData(keep=govaRegion avg);
+			set dataSum.&data(where=(&colName = &category and 
+			(gova1 = 1 or gova2 = 1 or gova3 = 1 or gova4 = 1 or gova5 = 1 or gova6 = 1 or gova7 = 1 or gova8 = 1 or gova9 = 1)
+			and &unit = "&nextUnit" and startYear = &startYear and endYear = &endYear));
+			length govaRegion $ 5;
+			format avg f8.;
+			
+			if gova1 = 1 then govaRegion = 'gova1';
+			else if gova2 = 1 then govaRegion = 'gova2';
+			else if gova3 = 1 then govaRegion = 'gova3';
+			else if gova4 = 1 then govaRegion = 'gova4';
+			else if gova5 = 1 then govaRegion = 'gova5';
+			else if gova6 = 1 then govaRegion = 'gova6';
+			else if gova7 = 1 then govaRegion = 'gova7';
+			else if gova8 = 1 then govaRegion = 'gova8';
+			else if gova9 = 1 then govaRegion = 'gova9';
+			
+			avg = avg * 100;
+		run;
+		
+		proc sql;
+			create table mapDataGOVA as
+			select a.avg, b.*
+			from mapData as a 
+				left join dataOut.govaRegions as b 
+				on a.govaregion = b.govaregion
+			;
+		quit;
+		
+		*add values for labels per GOVA region;
+		proc sql;
+			create table govaLabels as
+			select a.govaRegion, a.xNew, a.yNew, b.avg as label
+			from dataOut.govaMapLabel as a 
+				left join mapDataGOVA as b 
+				on a.govaRegion = b.govaRegion
+			;
+		quit;
+		
+		*create map;
+		proc sgmap mapdata=dataOut.vaMapData maprespdata=mapDataGOVA rattrmap=heatMapColor0Max plotdata=govaLabels;
+			title "&title &nextUnit";
+			choromap avg / mapid=countynm id=county rattrid=myid lineattrs=(color=white);
+			gradlegend / title='Percent of graduates';
+			text x=xNew y=yNew text=label / group=govaRegion textattrs=(color=black size=14);
+		run;
+		title;
+	%end; *unit level;
+%mend mapData;
+
+
+
+/*===============================================
+|												|
+|					Report 						|
+|												|
+===============================================*/
 
 /*-------------- Report set-up ----------------*/
 options nodate orientation=landscape;
@@ -776,6 +902,21 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 	
 		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
 
+			%mapData(unit=collegeCurrent,
+					 type='FDS',
+			 		 category='work',
+			 		 title=Working)
+			 		 
+			 %mapData(unit=collegeCurrent,
+			 		 type='FDS',
+			 		 category='looking',
+			 		 title=Looking for a placement)
+			 		 
+			 %mapData(unit=collegeCurrent,
+			 		 type='FDS',
+			 		 category='contEd',
+			 		 title=Contining Education)
+
 
 
 /*--------- Discipline x destination ----------*/
@@ -824,6 +965,16 @@ ods text="~S={font_size=18pt}{\pard\s1\b Destination \par}"; *H1;
 		
 /*------ Discipline x destination x GOVA ------*/
 		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
+
+		%mapData(unit=generalDiscipline,
+			 	 type='FDS',
+			 	 category='looking',
+			 	 title=Looking for a Placement)
+			 		 
+		%mapData(unit=generalDiscipline,
+			 	 type='FDS',
+			 	 category='work',
+			 	 title=Working)
 
 
 
@@ -894,6 +1045,20 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 /*----------- EL self-report x GOVA -----------*/
 		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
 		
+		%mapData(unit=collegeCurrent,
+				 type='FDS',
+			 	 category='paidIntern',
+			 	 title=Paid Internship)
+			 		 
+		%mapData(unit=collegeCurrent,
+				 type='FDS',
+			 	 category='unpaidIntern',
+			 	 title=Unpaid Internship)
+			 		 
+		%mapData(unit=collegeCurrent,
+				 type='FDS',
+			 	 category='research',
+			 	 title=Undergraduate Research)
 
 
 
@@ -945,6 +1110,20 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Self-report \pa
 /*----- Discipline x EL self-report x GOVA ----*/
 		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
 		
+		%mapData(unit=generalDiscipline,
+				 type='FDS',
+			 	 category='paidIntern',
+			 	 title=Paid Internship)
+			 		 
+		%mapData(unit=generalDiscipline,
+				 type='FDS',
+			 	 category='unpaidIntern',
+			 	 title=Unpaid Internship)
+			 		 
+		%mapData(unit=generalDiscipline,
+				 type='FDS',
+			 	 category='research',
+			 	 title=Undergraduate Research)
 		
 		
 
@@ -966,11 +1145,11 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Courses \par}";
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
 		
 		%outcomesSubgroupWithGaps(unit=collegeCurrent,
-						  type='enroll',
-						  categoryText=&courseText,
-						  categoryName='Course',
-						  subgroup=&subgroupAll, 
-						  subgroupNames=&subgroupAllNames)
+								  type='enroll',
+								  categoryText=&courseText,
+								  categoryName='Course',
+								  subgroup=&subgroupAll, 
+								  subgroupNames=&subgroupAllNames)
 	
 		%outcomesSubgroupNoGaps(unit=collegeCurrent,
 								type='enroll',
@@ -1015,7 +1194,11 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Courses \par}";
 /*------------- EL course x GOVA --------------*/		
 		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
 		
-		
+		%mapData(unit=collegeCurrent,
+				 type='enroll',
+			 	 category='everAny34Course',
+			 	 title=Any upper-level EL course)
+			 		 
 		
 
 /*---------- Discipine x EL course ------------*/
@@ -1034,11 +1217,11 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Courses \par}";
 		ods text="~S={font_size=14pt}{\pard\s3 Subgroup heat map \par}"; *H3;
 
 		%outcomesSubgroupWithGaps(unit=generalDiscipline,
-						  type='enroll',
-						  categoryText=&courseText,
-						  categoryName='Course',
-						  subgroup=&subgroupAll, 
-						  subgroupNames=&subgroupAllNames)
+								  type='enroll',
+								  categoryText=&courseText,
+								  categoryName='Course',
+								  subgroup=&subgroupAll, 
+								  subgroupNames=&subgroupAllNames)
 	
 		%outcomesSubgroupNoGaps(unit=generalDiscipline,
 								type='enroll',
@@ -1066,17 +1249,12 @@ ods text="~S={font_size=18pt}{\pard\s1\b Experiential Learning - Courses \par}";
 /*------ Discipline x EL course x GOVA --------*/		
 		ods text="~S={font_size=14pt}{\pard\s3 GOVA heat map \par}"; *H3;
 
+		%mapData(unit=generalDiscipline,
+				 type='enroll',
+			 	 category='everAny34Course',
+			 	 title=Any upper-level EL course)
 
 
 
 ods rtf close;
-
-/*
-proc sql;
-	select collegeCurrent, avg, category, instate
-	from dataSum.fdsMeansInt1
-	where category = 'contEd' and startYear=18 and endyear=20 and collegeCurrent is not missing and
-	instate is not missing;
-quit;
-*/
 
